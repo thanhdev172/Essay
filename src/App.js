@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from "react";
 import ImageUploader from "react-images-upload";
 import Axios from "axios";
+import axios from "axios";
 import "./components/FontawesomeIcons";
 
 import "./App.css";
 import ImageItem from "./components/ImageItem";
+
+// const BUCKET_NAME = "my-image-upload-bucket-demo-sws-17";
+const API =
+  "https://esib386y32.execute-api.ap-southeast-1.amazonaws.com/files/";
 
 const UploadComponent = (props) => (
   <form>
@@ -33,26 +38,37 @@ const UploadComponent = (props) => (
 
 const ImagesComponent = (props) => {
   const listImages = props.allImages;
-    return (
-      <>
-        <div className="grid wide">
-            <div className="row list-files">
-              <h2>List Images</h2>
-              <ul className="list-images">
-                {listImages.map(item => {
-                  return(
-                    <ImageItem name={item.name} />
-                  )
-                })}
-              </ul>
-            </div>
+
+  const handleDelete = (name) => {
+    // eslint-disable-next-line
+    const { imageName, onName } = props;
+    if (name) {
+      onName(name);
+    }
+  };
+  return (
+    <>
+      <div className="grid wide">
+        <div className="row list-files">
+          <h2>List Images</h2>
+          <ul className="list-images">
+            {listImages.map((image) => {
+              return (
+                <ImageItem
+                  name={image.name}
+                  onDelete={handleDelete}
+                  key={image.name}
+                />
+              );
+            })}
+          </ul>
         </div>
-      </>
-    );
+      </div>
+    </>
+  );
 };
 
 const App = () => {
-
   const [progress, setProgress] = useState("getUpload");
   const [url, setImageURL] = useState(undefined);
   const [errorMessage, setErrorMessage] = useState("");
@@ -62,19 +78,33 @@ const App = () => {
     setImageURL(e.target.value);
   };
 
-
   useEffect(() => {
     async function getImages() {
-      const requestUrl  = 'https://uv1pywl9me.execute-api.ap-southeast-1.amazonaws.com/dev/files';
-        const res = await fetch(requestUrl);
-        const resJSON = await res.json();
-        const data = resJSON.files;
-        setListImages(data);
+      const requestUrl =
+        "https://esib386y32.execute-api.ap-southeast-1.amazonaws.com/files";
+      const res = await fetch(requestUrl);
+      const resJSON = await res.json();
+      const data = resJSON.files;
+      setListImages(data);
     }
     getImages();
-  }, [])
+  }, []);
 
-  // console.log(listImages); // tai sao không có gì ở đây?
+  const handleDeletePhoto = (name) => {
+    if (name) {
+      if (window.confirm("Do you want to delete?")) {
+        axios.delete(`${API}${name}`).then((res) => {
+          if (res.status === 200) {
+            let newListImages = listImages.filter((image) => {
+              return image.name !== name;
+            });
+            // console.log(newListImages);
+            setListImages(newListImages);
+          }
+        });
+      }
+    }
+  };
 
   const onImage = async (failedImages, successImages) => {
     if (!url) {
@@ -104,6 +134,7 @@ const App = () => {
   };
 
   const content = () => {
+    // eslint-disable-next-line
     switch (progress) {
       case "getUpload":
         return (
@@ -118,7 +149,15 @@ const App = () => {
       case "uploading":
         return <h2>Uploading....</h2>;
       case "uploaded":
-        return <img src={url} alt="uploaded" />;
+        return (
+          <>
+            <UploadComponent
+              onUrlChange={onUrlChange}
+              onImage={onImage}
+              url={url}
+            />
+          </>
+        );
       case "uploadError":
         return (
           <>
@@ -137,7 +176,7 @@ const App = () => {
     <div className="App">
       <h1>Photo Management System</h1>
       {content()}
-     <ImagesComponent allImages={listImages} />
+      <ImagesComponent allImages={listImages} onName={handleDeletePhoto} />
     </div>
   );
 };
